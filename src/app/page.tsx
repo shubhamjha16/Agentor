@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useEffect, type ChangeEvent } from "react";
 import Image from "next/image";
-import { generateFollowUpQuestions, type GenerateFollowUpQuestionsInput } from "@/ai/flows/generate-follow-up-questions";
+import { generateFollowUpQuestions, type GenerateFollowUpQuestionsInput, type GenerateFollowUpQuestionsOutput } from "@/ai/flows/generate-follow-up-questions";
 import { generateFlowchart, type GenerateFlowchartInput } from "@/ai/flows/generate-flowchart";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppFooter } from "@/components/layout/AppFooter";
@@ -12,14 +13,22 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Brain, ScanText, DownloadCloud, AlertTriangle, Check, FileImage, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+interface MCQ {
+  questionText: string;
+  options: string[];
+  questionCategory?: string;
+}
+
 export default function AgentorPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [useCaseDescription, setUseCaseDescription] = useState("");
-  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  const [followUpQuestions, setFollowUpQuestions] = useState<MCQ[]>([]);
+  const [mcqAnswers, setMcqAnswers] = useState<Record<number, string>>({});
   const [flowchartImageFile, setFlowchartImageFile] = useState<File | null>(null);
   const [flowchartImageDataUri, setFlowchartImageDataUri] = useState<string | null>(null);
   const [flowchartImagePreview, setFlowchartImagePreview] = useState<string | null>(null);
@@ -61,20 +70,29 @@ export default function AgentorPage() {
     setError(null);
     setIsLoadingQuestions(true);
     setFollowUpQuestions([]);
+    setMcqAnswers({});
     try {
       const input: GenerateFollowUpQuestionsInput = { useCaseDescription };
       const result = await generateFollowUpQuestions(input);
-      setFollowUpQuestions(result.followUpQuestions);
-      if (result.followUpQuestions.length === 0) {
+      setFollowUpQuestions(result.followUpQuestions || []);
+      if (!result.followUpQuestions || result.followUpQuestions.length === 0) {
         toast({ title: "No specific follow-up questions generated.", description: "Your description might be clear enough or very brief. You can proceed to flowchart generation." });
       }
     } catch (e) {
       console.error("Error generating follow-up questions:", e);
-      setError("Failed to generate follow-up questions. Please try again.");
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+      setError(`Failed to generate follow-up questions: ${errorMessage}`);
       toast({ variant: "destructive", title: "Error", description: "Could not generate follow-up questions." });
     } finally {
       setIsLoadingQuestions(false);
     }
+  };
+
+  const handleMcqAnswerChange = (questionIndex: number, selectedOption: string) => {
+    setMcqAnswers(prevAnswers => ({
+      ...prevAnswers,
+      [questionIndex]: selectedOption,
+    }));
   };
 
   const handleGenerateFlowchart = async () => {
@@ -85,18 +103,35 @@ export default function AgentorPage() {
     setError(null);
     setIsLoadingFlowchart(true);
     setGeneratedFlowchartText("");
+
+    let fullDescription = useCaseDescription;
+    if (followUpQuestions.length > 0 && Object.keys(mcqAnswers).length > 0) {
+      let refinementText = "\n\nFurther refinement based on user's answers to clarifying questions:\n";
+      let answeredCount = 0;
+      followUpQuestions.forEach((mcq, index) => {
+        if (mcqAnswers[index]) {
+          refinementText += `Q: ${mcq.questionText}\nA: ${mcqAnswers[index]}\n`;
+          answeredCount++;
+        }
+      });
+      if(answeredCount > 0) {
+        fullDescription += refinementText;
+      }
+    }
+
     try {
-      const input: GenerateFlowchartInput = { description: useCaseDescription };
+      const input: GenerateFlowchartInput = { description: fullDescription };
       if (flowchartImageDataUri) {
         input.flowchartImage = flowchartImageDataUri;
       }
       const result = await generateFlowchart(input);
       setGeneratedFlowchartText(result.flowchartDiagram);
       toast({ title: "Flowchart Generated!", description: "You can now review and edit the flowchart below." });
-      navigateToStep(2.5); // A pseudo-step to show flowchart before final export step
+      navigateToStep(2.5); 
     } catch (e) {
       console.error("Error generating flowchart:", e);
-      setError("Failed to generate flowchart. Please try again.");
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+      setError(`Failed to generate flowchart: ${errorMessage}`);
       toast({ variant: "destructive", title: "Error", description: "Could not generate flowchart." });
     } finally {
       setIsLoadingFlowchart(false);
@@ -108,6 +143,7 @@ export default function AgentorPage() {
     const agentCode = `// Agentor AI Agent Code
 // Generated on: ${new Date().toISOString()}
 // Use Case: ${useCaseDescription}
+// MCQ Answers: ${JSON.stringify(mcqAnswers, null, 2)}
 
 // Flowchart Definition:
 /*
@@ -145,7 +181,7 @@ main();
   };
 
   const navigateToStep = (step: number) => {
-    setError(null); // Clear errors when navigating
+    setError(null); 
     if (step === 2 && !useCaseDescription.trim()) {
         toast({ variant: "destructive", title: "Missing Description", description: "Please provide a use case description first."});
         return;
@@ -160,7 +196,7 @@ main();
   const handleImageFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) { 
         toast({ variant: "destructive", title: "File too large", description: "Please upload an image smaller than 5MB." });
         return;
       }
@@ -174,7 +210,7 @@ main();
     setFlowchartImageDataUri(null);
     const fileInput = document.getElementById('flowchart-image-upload') as HTMLInputElement;
     if (fileInput) {
-      fileInput.value = ""; // Reset file input
+      fileInput.value = ""; 
     }
   };
 
@@ -222,11 +258,32 @@ main();
               </Button>
               
               {followUpQuestions.length > 0 && (
-                <div className="mt-6 space-y-3 p-4 border rounded-md bg-secondary/30">
-                  <h3 className="font-semibold text-lg text-foreground">Follow-up Questions:</h3>
-                  <ul className="list-disc list-inside space-y-2 text-foreground/90">
-                    {followUpQuestions.map((q, i) => <li key={i}>{q}</li>)}
-                  </ul>
+                <div className="mt-6 space-y-6 p-4 border rounded-md bg-secondary/30">
+                  <h3 className="font-semibold text-lg text-foreground">Refine with these questions:</h3>
+                  {followUpQuestions.map((mcq, index) => (
+                    <div key={index} className="mb-4 p-3 border-b border-border last:border-b-0 bg-card rounded-md shadow">
+                       <Label className="font-medium text-base text-foreground/90 mb-2 block">
+                        {mcq.questionCategory && (
+                          <span className="text-xs bg-accent text-accent-foreground px-1.5 py-0.5 rounded-sm mr-2 align-middle">
+                            {mcq.questionCategory}
+                          </span>
+                        )}
+                        {mcq.questionText}
+                      </Label>
+                      <RadioGroup
+                        value={mcqAnswers[index]}
+                        onValueChange={(value) => handleMcqAnswerChange(index, value)}
+                        className="space-y-2 pl-2"
+                      >
+                        {mcq.options.map((option, optionIndex) => (
+                          <div key={optionIndex} className="flex items-center space-x-2">
+                            <RadioGroupItem value={option} id={`q${index}-option${optionIndex}`} />
+                            <Label htmlFor={`q${index}-option${optionIndex}`} className="font-normal text-sm cursor-pointer">{option}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -246,15 +303,31 @@ main();
                 <CardTitle className="font-headline text-2xl">Design Agent Flowchart</CardTitle>
               </div>
               <CardDescription>
-                Review your description. Optionally, upload a hand-drawn flowchart. Then, generate the agent's logic.
+                Review your description and any answered questions. Optionally, upload a hand-drawn flowchart. Then, generate the agent's logic.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <h4 className="font-semibold text-lg mb-1">Current Use Case Description:</h4>
-                <p className="text-muted-foreground p-3 border rounded-md bg-secondary/30">{useCaseDescription || "No description provided yet."}</p>
+                <h4 className="font-semibold text-lg mb-1">Base Use Case Description:</h4>
+                <p className="text-muted-foreground p-3 border rounded-md bg-secondary/30 whitespace-pre-wrap">{useCaseDescription || "No description provided yet."}</p>
               </div>
               
+              {Object.keys(mcqAnswers).length > 0 && (
+                <div>
+                    <h4 className="font-semibold text-lg mb-1 mt-4">Your Answers to Follow-up Questions:</h4>
+                    <div className="p-3 border rounded-md bg-secondary/30 space-y-2 max-h-60 overflow-y-auto">
+                    {followUpQuestions.map((mcq, index) => 
+                        mcqAnswers[index] ? (
+                        <div key={`answer-${index}`} className="text-sm">
+                            <p className="font-medium">{mcq.questionText}</p>
+                            <p className="text-muted-foreground pl-2">↳ {mcqAnswers[index]}</p>
+                        </div>
+                        ) : null
+                    )}
+                    </div>
+                </div>
+                )}
+
               <div className="space-y-2">
                 <Label htmlFor="flowchart-image-upload" className="text-base font-medium">Upload Hand-Drawn Flowchart (Optional)</Label>
                 <Input id="flowchart-image-upload" type="file" accept="image/*" onChange={handleImageFileChange} className="text-base file:text-primary file:font-semibold"/>
@@ -339,3 +412,4 @@ main();
     </div>
   );
 }
+
