@@ -145,133 +145,205 @@ export default function AgentorPage() {
   const handleExportAgent = () => {
     if (!generatedFlowchartText) return;
 
-    const mcqAnswersString = Object.keys(mcqAnswers).length > 0 
-      ? JSON.stringify(mcqAnswers, null, 2)
-      : "No follow-up questions answered.";
+    let mcqAnswersPythonDict = "{";
+    const mcqEntries = Object.entries(mcqAnswers);
+    mcqEntries.forEach(([key, value], index) => {
+      mcqAnswersPythonDict += `'${key}': '${String(value).replace(/'/g, "\\'")}'`;
+      if (index < mcqEntries.length - 1) {
+        mcqAnswersPythonDict += ", ";
+      }
+    });
+    mcqAnswersPythonDict += "}";
+    if (mcqEntries.length === 0) mcqAnswersPythonDict = "{}";
+
+    const safeUseCaseDescription = useCaseDescription.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$').replace(/"/g, '\\"');
+    const safeGeneratedFlowchartText = generatedFlowchartText.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$').replace(/"/g, '\\"');
 
     const agentDefinitionText = `
-// Agentor AI Agent Definition
-// Generated on: ${new Date().toISOString()}
+# Agentor AI Agent Definition (LangGraph Python Conceptual Structure)
+# Generated on: ${new Date().toISOString()}
 
-// == Use Case Description ==
-/*
+# == Use Case Description ==
+"""
 ${useCaseDescription}
-*/
+"""
 
-// == MCQ Answers (Refinements) ==
-/*
-${mcqAnswersString}
-*/
+# == MCQ Answers (Refinements) ==
+# ${mcqAnswersPythonDict}
 
-// == Flowchart Definition (e.g., Mermaid Syntax or other textual format) ==
-/*
+# == Flowchart Definition (e.g., Mermaid Syntax or other textual format) ==
+"""
 ${generatedFlowchartText}
-*/
+"""
 
-// --- LangGraph-inspired Textual Representation ---
+# --- LangGraph Python Conceptual Structure ---
+# This section provides a conceptual Python outline for structuring the agent
+# using LangGraph principles. This is for illustrative purposes and may require
+# further development and integration with LangGraph libraries to be executable.
 
-// This section provides a conceptual outline of how the agent's logic,
-// as described by the flowchart above, might be structured using LangGraph principles.
-// This is for illustrative purposes and is not executable LangGraph code.
+# from typing import TypedDict, Optional, Dict, Any, List
+# from langgraph.graph import StateGraph, END # Assuming these imports for a real LangGraph setup
+# # You might also need: from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
-// ## Core Concepts:
+# print("--- Conceptual LangGraph Agent Definition ---")
 
-// 1. State:
-//    A dictionary or class instance that is passed between nodes. It would hold
-//    all relevant information, e.g., user inputs, conversation history, results of tool calls.
-//    Example state keys: 'userInput', 'agentScratchpad', 'intermediateResults', 'flowchartLogic'.
+# 1. Define Agent State
+# class AgentState(TypedDict):
+#     useCaseDescription: str
+#     mcqAnswers: Dict[str, str]
+#     flowchartLogic: str # This would be your textual flowchart
+#     userInput: Optional[str] # Example: for interactive agents
+#     agentScratchpad: str # For intermediate thoughts/results
+#     intermediateResults: Optional[Dict[str, Any]]
+#     finalResponse: Optional[str]
+#     # Add other state variables as needed based on your flowchart (e.g., conversation_history: List[BaseMessage])
 
-// 2. Nodes:
-//    Functions or callables that perform a unit of work and update the state.
-//    Derived from your flowchart, nodes could represent:
-//    - Receiving user input / Initializing with use case
-//    - Applying MCQ refinements
-//    - Making a decision (conditional logic based on flowchart)
-//    - Calling a tool (e.g., an external API, a data lookup)
-//    - Generating a response or taking an action
-//    - Starting or ending the process
+# 2. Define Nodes (as Python functions)
+#    Each node takes the current state (AgentState) and returns a dictionary to update the state.
 
-//    Example Node Definitions (Conceptual Python-like pseudocode):
-//    def entry_node(state):
-//        # Initialize agent state
-//        print("Agent starting...")
-//        state['useCase'] = """${useCaseDescription.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$')}"""
-//        state['mcqAnswers'] = ${JSON.stringify(mcqAnswers, null, 0).replace(/`/g, '\\`')}
-//        state['flowchartLogic'] = """${generatedFlowchartText.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$')}"""
-//        state['agentScratchpad'] = "Agent initialized with use case, MCQs, and flowchart."
-//        return state
-//
-//    def process_flowchart_node(state):
-//        # Core logic based on flowchart structure, use case, and MCQ answers.
-//        # This node would interpret the 'flowchartLogic' in the state,
-//        # potentially making decisions, calling tools, or preparing a response.
-//        print(f"Processing based on flowchart: {state['flowchartLogic'][:100]}...")
-//        # Example: if "ask user X" in state['flowchartLogic'] and condition_met:
-//        # state['nextAction'] = "ask_user_x"
-//        # else:
-//        # state['nextAction'] = "provide_solution_y"
-//        state['agentResponse'] = "Output based on flowchart interpretation."
-//        return state
-//
-//    def final_output_node(state):
-//        # Presents the final result or takes a final action
-//        print(f"Agent final output: {state.get('agentResponse', 'No specific response generated.')}")
-//        return state
+# def entry_node(state: AgentState) -> Dict[str, Any]:
+#     print("--- Node: Entry ---")
+#     # This node could initialize the agent, load prerequisite data, or greet the user.
+#     # The useCaseDescription, mcqAnswers, and flowchartLogic are typically loaded
+#     # into the initial state when the graph is invoked.
+#     print(f"Initializing agent with Use Case: {state['useCaseDescription'][:100]}...")
+#     print(f"MCQ Answers for refinement: {state['mcqAnswers']}")
+#     print(f"Flowchart structure to follow: {state['flowchartLogic'][:100]}...")
+#     
+#     updated_scratchpad = "Agent initialized. Ready to process flowchart logic based on user input or predefined triggers."
+#     # Example: If the agent is conversational
+#     # if not state.get('conversation_history'):
+#     # updated_scratchpad += "\\nNo conversation history yet."
+#     return {"agentScratchpad": updated_scratchpad}
 
-// 3. Edges:
-//    Define the flow of control between nodes.
-//    - Standard Edges: Unconditionally go from one node to the next.
-//    - Conditional Edges: Route to different nodes based on the current state
-//      (e.g., derived from interpreting 'flowchartLogic').
+# def process_flowchart_node(state: AgentState) -> Dict[str, Any]:
+#     print("--- Node: Process Flowchart ---")
+#     flowchart_text = state['flowchartLogic']
+#     current_input = state.get('userInput', '')
+#     scratchpad = state.get('agentScratchpad', '')
+#     
+#     # Core logic based on your flowchart would reside here.
+#     # This involves:
+#     #   - Parsing/interpreting 'flowchart_text'.
+#     #   - Using 'mcqAnswers' for refined logic.
+#     #   - Potentially using 'userInput' if the agent interacts.
+#     #   - Making decisions, calling tools (external APIs, data lookups via LangChain tools).
+#     #   - Updating 'agentScratchpad' with reasoning.
+#     #   - Preparing 'intermediateResults' or 'finalResponse'.
+#
+#     # ---- Placeholder Logic ----
+#     print(f"Interpreting flowchart: {flowchart_text[:70]}...")
+#     print(f"Considering user input: {current_input[:70]}...")
+#
+#     # Example: Simple conditional logic based on flowchart hint
+#     agent_response_text = ""
+#     if "customer support" in state['useCaseDescription'].lower():
+#         agent_response_text = "Based on the flowchart, I should provide customer support steps."
+#     elif "product recommendation" in state['useCaseDescription'].lower():
+#         agent_response_text = "According to the flowchart, I will recommend a product."
+#     else:
+#         agent_response_text = "Processing complete based on the general flowchart structure."
+#     
+#     # This is a placeholder for the actual outcome of flowchart processing.
+#     # In a real agent, this node might route to different nodes based on its interpretation.
+#     # For this example, we'll assume it directly leads to a final response.
+#     updated_scratchpad = scratchpad + f"\\nFlowchart processing: {agent_response_text}"
+#     return {"agentScratchpad": updated_scratchpad, "finalResponse": agent_response_text}
 
-//    Example Edge Definitions (Conceptual LangGraph Python-like):
-//    # from langgraph.graph import StateGraph, END
-//    #
-//    # class AgentState(TypedDict):
-//    #     useCase: str
-//    #     mcqAnswers: dict
-//    #     flowchartLogic: str
-//    #     agentScratchpad: str
-//    #     agentResponse: Optional[str]
-//    #     nextAction: Optional[str]
-//    #
-//    # builder = StateGraph(AgentState)
-//    #
-//    # builder.add_node("entry", entry_node)
-//    # builder.add_node("processFlowchart", process_flowchart_node)
-//    # builder.add_node("finalOutput", final_output_node)
-//    #
-//    # builder.set_entry_point("entry")
-//    # builder.add_edge("entry", "processFlowchart")
-//    #
-//    # # Example of conditional routing (would depend on actual flowchart interpretation)
-//    # def route_after_processing(state: AgentState):
-//    #     if state.get("nextAction") == "ask_user_x":
-//    #         return "ask_user_x_node" # (Assuming 'ask_user_x_node' is defined)
-//    #     else:
-//    #         return "finalOutput"
-//    #
-//    # builder.add_conditional_edges(
-//    #     "processFlowchart",
-//    #     route_after_processing,
-//    #     {"ask_user_x_node": "ask_user_x_node", "finalOutput": "finalOutput"}
-//    # )
-//    # builder.add_edge("ask_user_x_node", "processFlowchart") # Loop back or to next step
-//
-//    # Simplified direct edge for this example structure:
-//    builder.add_edge("processFlowchart", "finalOutput")
-//    builder.add_edge("finalOutput", END) # END is a special node in LangGraph
+# def final_output_node(state: AgentState) -> Dict[str, Any]:
+#     print("--- Node: Final Output ---")
+#     response = state.get('finalResponse', "No specific response was generated by the agent.")
+#     print(f"Agent's Final Response: {response}")
+#     # This node typically signifies the end of a particular path or the entire agent's run.
+#     # No further state updates are strictly necessary if this is leading to END.
+#     return {"finalResponse": response} # Or just {} if no change to finalResponse needed here
 
-// ## To implement this in LangGraph (Python):
-// - Install LangGraph: \`pip install langgraph\`
-// - Define your state (e.g., using TypedDict from \`typing_extensions\` or Pydantic).
-// - Write Python functions for each node that takes the state and returns a (partial) state update.
-// - Assemble the graph using \`StateGraph\` or \`Graph\`.
-// - Compile the graph using \`graph.compile()\` and then invoke it.
+# 3. Assemble the Graph
+# print("--- Assembling LangGraph ---")
+# builder = StateGraph(AgentState)
 
-// For more details, refer to the official LangGraph documentation.
-`;
-    const blob = new Blob([agentDefinitionText.trim()], { type: 'text/plain;charset=utf-8' });
+# Add nodes to the graph
+# builder.add_node("entry", entry_node)
+# builder.add_node("process_flowchart", process_flowchart_node)
+# builder.add_node("final_output", final_output_node)
+# # Add more nodes here as per your flowchart (e.g., decision_nodes, tool_calling_nodes)
+
+# Set the entry point for the graph
+# builder.set_entry_point("entry")
+
+# Add edges to define the flow between nodes
+# builder.add_edge("entry", "process_flowchart")
+
+# Example of a conditional edge (conceptual):
+# # def decide_next_step_after_processing(state: AgentState):
+# #     # Logic to decide the next node based on 'intermediateResults' or 'agentScratchpad'
+# #     if "specific_condition_met" in state.get('agentScratchpad', ''):
+# #         return "custom_logic_node" # Name of another node
+# #     elif state.get('intermediateResults', {}).get('tool_error'):
+# #         return "error_handling_node"
+# #     else:
+# #         return "final_output" # Default path
+#
+# # builder.add_conditional_edges(
+# #     "process_flowchart",
+# #     decide_next_step_after_processing,
+# #     {
+# # "custom_logic_node": "custom_logic_node", # Map decision to node name
+# # "error_handling_node": "error_handling_node",
+# # "final_output": "final_output",
+# #     }
+# # )
+# # builder.add_edge("custom_logic_node", "final_output") # Example
+# # builder.add_edge("error_handling_node", "final_output") # Example
+
+# For this simplified example structure, a direct edge:
+# builder.add_edge("process_flowchart", "final_output")
+
+# Define the end point of the graph
+# builder.add_edge("final_output", END)
+
+# Compile the graph (this creates a LangChain Runnable)
+# print("--- Compiling Graph ---")
+# try:
+#     agent_executor = builder.compile()
+#     print("Graph compiled successfully.")
+#
+#     # 4. Invoke the Graph (Example)
+#     print("--- Example Invocation ---")
+#     initial_state = {
+#         "useCaseDescription": """${safeUseCaseDescription}""",
+#         "mcqAnswers": ${mcqAnswersPythonDict},
+#         "flowchartLogic": """${safeGeneratedFlowchartText}""",
+#         "userInput": "Hello, I need help with my recent order.", # Example user input
+#         "agentScratchpad": "",
+#         "intermediateResults": {},
+#         "finalResponse": None,
+#         # "conversation_history": [] # Initialize if using conversational memory
+#     }
+#
+#     # To stream events (including state at each step):
+#     # print("\\nStreaming agent execution...")
+#     # for event_step in agent_executor.stream(initial_state):
+#     #     node_name = list(event_step.keys())[0]
+#     #     current_state_at_node = event_step[node_name]
+#     #     print(f"\\nOutput from node '{node_name}':")
+#     #     print("Current State:", current_state_at_node)
+#     #     print("--------------------------------------")
+#     # 
+#     # final_state = agent_executor.invoke(initial_state)
+#     # print("\\nFinal Agent State after invocation:", final_state)
+#     # print("Final Response:", final_state.get('finalResponse'))
+#
+# except Exception as e:
+# print(f"Error during graph compilation or example invocation: {e}")
+
+# print("--- End of Conceptual LangGraph Agent Definition ---")
+
+# For more details on building with LangGraph, refer to the official LangGraph documentation.
+# https://python.langchain.com/docs/langgraph
+`.trim();
+
+    const blob = new Blob([agentDefinitionText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -280,7 +352,7 @@ ${generatedFlowchartText}
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: "Agent Definition Downloaded!", description: "Your AI agent's textual definition has been successfully downloaded." });
+    toast({ title: "Agent Definition Downloaded!", description: "Your AI agent's conceptual Python LangGraph definition has been downloaded." });
   };
 
   const navigateToStep = (step: number) => {
@@ -492,7 +564,7 @@ ${generatedFlowchartText}
                 <CardTitle className="font-headline text-2xl">Export Your AI Agent</CardTitle>
               </div>
               <CardDescription>
-                Your AI agent is ready! Download the generated textual definition.
+                Your AI agent is ready! Download the generated textual definition with a Python LangGraph conceptual structure.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
