@@ -74,10 +74,32 @@ const generateFollowUpQuestionsFlow = ai.defineFlow(
     inputSchema: GenerateFollowUpQuestionsInputSchema,
     outputSchema: GenerateFollowUpQuestionsOutputSchema,
   },
-  async input => {
-    const {output} = await generateFollowUpQuestionsPrompt(input);
-    // Ensure there's always an output, even if it's an empty list
-    return output || { followUpQuestions: [] };
+  async (input): Promise<GenerateFollowUpQuestionsOutput> => {
+    try {
+      const {output} = await generateFollowUpQuestionsPrompt(input);
+      if (!output) {
+        console.error('Follow-up questions generation: Model returned undefined output.');
+        throw new Error('The AI model did not return any follow-up questions. Please try refining your description or try again.');
+      }
+      // Ensure followUpQuestions is at least an empty array if the model returns an output object without it.
+      return { followUpQuestions: output.followUpQuestions || [] };
+    } catch (e: unknown) {
+      let userFriendlyErrorMessage = 'An unexpected error occurred while generating follow-up questions. Please try again.';
+      if (e instanceof Error) {
+        console.error(`Error in generateFollowUpQuestionsFlow: ${e.message}`, e);
+        if (e.message.includes('503 Service Unavailable') || e.message.includes('model is overloaded') || e.message.includes('overloaded')) {
+          userFriendlyErrorMessage = 'The AI model is currently overloaded and cannot generate questions. Please try again in a few moments.';
+        } else if (e.message.includes('API key not valid')) {
+          userFriendlyErrorMessage = 'The AI API key is not valid. Please check your configuration to generate questions.';
+        } else {
+          // Keep a somewhat generic message for other errors
+          userFriendlyErrorMessage = `Question generation failed: ${e.message}. If this persists, please check the console for more details.`;
+        }
+      } else {
+        console.error('Unknown error in generateFollowUpQuestionsFlow:', e);
+      }
+      throw new Error(userFriendlyErrorMessage);
+    }
   }
 );
 
