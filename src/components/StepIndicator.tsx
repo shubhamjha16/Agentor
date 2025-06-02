@@ -1,3 +1,4 @@
+
 import { cn } from "@/lib/utils";
 import { CheckCircle } from "lucide-react";
 
@@ -15,7 +16,7 @@ export function StepIndicator({ currentStep, totalSteps, stepTitles }: StepIndic
         const isActive = stepNumber === currentStep;
         const isCompleted = stepNumber < currentStep;
         return (
-          <div key={stepNumber} className="flex flex-col items-center text-center w-1/3 max-w-[120px] sm:max-w-[150px]">
+          <div key={stepNumber} className="flex flex-col items-center text-center w-1/2 max-w-[180px] sm:max-w-[220px]">
             <div
               className={cn(
                 "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 text-lg sm:text-xl font-semibold transition-all duration-300 ease-in-out",
@@ -27,7 +28,7 @@ export function StepIndicator({ currentStep, totalSteps, stepTitles }: StepIndic
               {isCompleted ? <CheckCircle className="w-6 h-6 sm:w-7 sm:h-7" /> : <span>{stepNumber}</span>}
             </div>
             <p className={cn(
-              "mt-2 text-xs sm:text-sm font-medium transition-colors duration-300 ease-in-out", 
+              "mt-2 text-xs sm:text-sm font-medium transition-colors duration-300 ease-in-out px-1", 
               isActive ? "text-primary" : isCompleted ? "text-primary" : "text-muted-foreground"
             )}>
               {stepTitles[index]}
@@ -38,3 +39,4 @@ export function StepIndicator({ currentStep, totalSteps, stepTitles }: StepIndic
     </div>
   );
 }
+

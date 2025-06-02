@@ -40,7 +40,7 @@ export default function AgentorPage() {
 
   const { toast } = useToast();
 
-  const stepTitles = ["Describe Use Case", "Generate Flowchart", "Export Agent"];
+  const stepTitles = ["Define Agent", "Review Flowchart & Export"];
 
   useEffect(() => {
     if (flowchartImageFile) {
@@ -98,11 +98,12 @@ export default function AgentorPage() {
   const handleGenerateFlowchart = async () => {
     if (!useCaseDescription.trim()) {
       setError("Please ensure the use case description is provided.");
+      toast({ variant: "destructive", title: "Missing Description", description: "Please provide a use case description first."});
       return;
     }
     setError(null);
     setIsLoadingFlowchart(true);
-    setGeneratedFlowchartText("");
+    setGeneratedFlowchartText(""); // Clear previous flowchart
 
     let fullDescription = useCaseDescription;
     if (followUpQuestions.length > 0 && Object.keys(mcqAnswers).length > 0) {
@@ -126,8 +127,8 @@ export default function AgentorPage() {
       }
       const result = await generateFlowchart(input);
       setGeneratedFlowchartText(result.flowchartDiagram);
-      toast({ title: "Flowchart Generated!", description: "You can now review and edit the flowchart below." });
-      navigateToStep(2.5); 
+      toast({ title: "Flowchart Generated!", description: "You can now review and edit the flowchart." });
+      navigateToStep(2); 
     } catch (e) {
       console.error("Error generating flowchart:", e); 
       const specificErrorMessage = e instanceof Error ? e.message : "An unknown error occurred while generating the flowchart.";
@@ -437,12 +438,8 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
 
   const navigateToStep = (step: number) => {
     setError(null); 
-    if (step === 2 && !useCaseDescription.trim()) {
-        toast({ variant: "destructive", title: "Missing Description", description: "Please provide a use case description first."});
-        return;
-    }
-     if (step === 3 && !generatedFlowchartText.trim()) {
-        toast({ variant: "destructive", title: "Flowchart Not Confirmed", description: "Please generate and confirm the flowchart first."});
+    if (step === 2 && !generatedFlowchartText.trim()) {
+        toast({ variant: "destructive", title: "Flowchart Not Generated", description: "Please generate the flowchart in Step 1 first."});
         return;
     }
     setCurrentStep(step);
@@ -474,7 +471,7 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
     <div className="flex flex-col min-h-screen bg-background">
       <AppHeader />
       <main className="flex-grow container mx-auto px-4 py-8 md:px-6 md:py-12">
-        <StepIndicator currentStep={Math.floor(currentStep)} totalSteps={3} stepTitles={stepTitles} />
+        <StepIndicator currentStep={currentStep} totalSteps={2} stepTitles={stepTitles} />
 
         {error && (
           <Alert variant="destructive" className="mb-6">
@@ -489,10 +486,10 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
             <CardHeader>
               <div className="flex items-center mb-2">
                 <Brain className="h-7 w-7 mr-3 text-primary" />
-                <CardTitle className="font-headline text-2xl">Describe Your AI Agent's Use Case</CardTitle>
+                <CardTitle className="font-headline text-2xl">Define Your AI Agent</CardTitle>
               </div>
               <CardDescription>
-                Explain in plain language what you want your AI agent to do. The more detail you provide, the better.
+                Describe your agent, answer clarifying questions, and optionally provide a hand-drawn flowchart to guide the AI.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -502,12 +499,17 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
                   id="useCaseDescription"
                   value={useCaseDescription}
                   onChange={(e) => setUseCaseDescription(e.target.value)}
-                  placeholder="e.g., 'An AI agent to help customers troubleshoot product issues by asking questions and providing solutions from a knowledge base.'"
+                  placeholder="e.g., 'An AI agent to help customers troubleshoot product issues...'"
                   rows={6}
                   className="mt-1 text-base"
                 />
               </div>
-              <Button onClick={handleGetFollowUpQuestions} disabled={isLoadingQuestions || !useCaseDescription.trim()} className="w-full sm:w-auto text-base py-3 px-6">
+              
+              <Button 
+                onClick={handleGetFollowUpQuestions} 
+                disabled={isLoadingQuestions || !useCaseDescription.trim()} 
+                className="w-full sm:w-auto text-base py-3 px-6"
+              >
                 {isLoadingQuestions ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                 Get Follow-up Questions
               </Button>
@@ -541,30 +543,48 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
                   ))}
                 </div>
               )}
+
+              <div className="space-y-2 pt-4 border-t">
+                <Label htmlFor="flowchart-image-upload" className="text-base font-medium">Upload Hand-Drawn Flowchart (Optional)</Label>
+                <Input id="flowchart-image-upload" type="file" accept="image/*" onChange={handleImageFileChange} className="text-base file:text-primary file:font-semibold"/>
+                 {flowchartImagePreview && (
+                  <div className="mt-4 relative group w-full max-w-md border rounded-md p-2 bg-secondary/30">
+                    <Image src={flowchartImagePreview} alt="Flowchart preview" width={400} height={300} className="rounded-md object-contain max-h-[300px] w-auto mx-auto" data-ai-hint="diagram drawing" />
+                    <Button variant="destructive" size="icon" onClick={removeImage} className="absolute top-2 right-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={() => navigateToStep(2)} disabled={!useCaseDescription.trim()} className="ml-auto text-base py-3 px-6">
-                Next: Design Flowchart
+              <Button 
+                onClick={handleGenerateFlowchart} 
+                disabled={isLoadingFlowchart || !useCaseDescription.trim()} 
+                className="ml-auto text-base py-3 px-6"
+              >
+                {isLoadingFlowchart ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ScanText className="mr-2 h-5 w-5" />}
+                Generate Flowchart & Proceed
               </Button>
             </CardFooter>
           </Card>
         )}
 
-        {(currentStep === 2 || currentStep === 2.5) && (
+        {currentStep === 2 && (
           <Card className="w-full max-w-3xl mx-auto shadow-lg">
             <CardHeader>
               <div className="flex items-center mb-2">
-                 <ScanText className="h-7 w-7 mr-3 text-primary" />
-                <CardTitle className="font-headline text-2xl">Design Agent Flowchart</CardTitle>
+                 <DownloadCloud className="h-7 w-7 mr-3 text-primary" />
+                <CardTitle className="font-headline text-2xl">Review Flowchart & Export Agent</CardTitle>
               </div>
               <CardDescription>
-                Review your description and any answered questions. Optionally, upload a hand-drawn flowchart. Then, generate the agent's logic.
+                Review and edit the generated flowchart text. Then, download your AI agent's definition.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
+               <div>
                 <h4 className="font-semibold text-lg mb-1">Base Use Case Description:</h4>
-                <p className="text-muted-foreground p-3 border rounded-md bg-secondary/30 whitespace-pre-wrap">{useCaseDescription || "No description provided yet."}</p>
+                <p className="text-muted-foreground p-3 border rounded-md bg-secondary/30 whitespace-pre-wrap">{useCaseDescription || "No description provided."}</p>
               </div>
               
               {Object.keys(mcqAnswers).length > 0 && (
@@ -581,84 +601,47 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
                     )}
                     </div>
                 </div>
-                )}
-
-              <div className="space-y-2">
-                <Label htmlFor="flowchart-image-upload" className="text-base font-medium">Upload Hand-Drawn Flowchart (Optional)</Label>
-                <Input id="flowchart-image-upload" type="file" accept="image/*" onChange={handleImageFileChange} className="text-base file:text-primary file:font-semibold"/>
-                 {flowchartImagePreview && (
-                  <div className="mt-4 relative group w-full max-w-md border rounded-md p-2 bg-secondary/30">
+              )}
+              
+              {flowchartImagePreview && (
+                <div className="mt-4">
+                  <h4 className="font-semibold text-lg mb-1">Uploaded Hand-Drawn Flowchart:</h4>
+                  <div className="relative group w-full max-w-md border rounded-md p-2 bg-secondary/30">
                     <Image src={flowchartImagePreview} alt="Flowchart preview" width={400} height={300} className="rounded-md object-contain max-h-[300px] w-auto mx-auto" data-ai-hint="diagram drawing" />
-                    <Button variant="destructive" size="icon" onClick={removeImage} className="absolute top-2 right-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                )}
-              </div>
-
-              <Button onClick={handleGenerateFlowchart} disabled={isLoadingFlowchart || !useCaseDescription.trim()} className="w-full sm:w-auto text-base py-3 px-6">
-                {isLoadingFlowchart ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <FileImage className="mr-2 h-5 w-5" />}
-                Generate Flowchart
-              </Button>
-
-              {currentStep === 2.5 && generatedFlowchartText && (
-                <div className="mt-6 space-y-3">
-                  <Label htmlFor="generatedFlowchart" className="text-base font-medium">Generated Flowchart (Editable)</Label>
-                  <Textarea
-                    id="generatedFlowchart"
-                    value={generatedFlowchartText}
-                    onChange={(e) => setGeneratedFlowchartText(e.target.value)}
-                    rows={12}
-                    className="mt-1 font-code text-sm bg-input/30"
-                    placeholder="Flowchart will appear here in a textual format (e.g., Mermaid syntax)..."
-                  />
-                   <Alert className="mt-2">
-                    <Check className="h-4 w-4"/>
-                    <AlertTitle>Review and Edit</AlertTitle>
-                    <AlertDescription>
-                      You can edit the textual representation of the flowchart above. 
-                      This text will be used to generate your agent.
-                    </AlertDescription>
-                  </Alert>
                 </div>
               )}
+
+              <div className="mt-6 space-y-3">
+                <Label htmlFor="generatedFlowchart" className="text-base font-medium">Generated Flowchart (Editable)</Label>
+                <Textarea
+                  id="generatedFlowchart"
+                  value={generatedFlowchartText}
+                  onChange={(e) => setGeneratedFlowchartText(e.target.value)}
+                  rows={12}
+                  className="mt-1 font-code text-sm bg-input/30"
+                  placeholder="Flowchart will appear here in a textual format..."
+                />
+                 <Alert className="mt-2">
+                  <Check className="h-4 w-4"/>
+                  <AlertTitle>Review and Edit</AlertTitle>
+                  <AlertDescription>
+                    You can edit the textual representation of the flowchart above. 
+                    This text will be used to generate your agent definition.
+                  </AlertDescription>
+                </Alert>
+              </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => navigateToStep(1)} className="text-base py-3 px-6">Back</Button>
+              <Button variant="outline" onClick={() => navigateToStep(1)} className="text-base py-3 px-6">Back to Define</Button>
               <Button 
-                onClick={() => navigateToStep(3)} 
-                disabled={!generatedFlowchartText.trim() || currentStep !== 2.5}
+                onClick={handleExportAgent} 
+                disabled={!generatedFlowchartText.trim()}
                 className="text-base py-3 px-6"
               >
-                Next: Export Agent
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
-
-        {currentStep === 3 && (
-          <Card className="w-full max-w-2xl mx-auto shadow-lg">
-            <CardHeader>
-               <div className="flex items-center mb-2">
-                <DownloadCloud className="h-7 w-7 mr-3 text-primary" />
-                <CardTitle className="font-headline text-2xl">Export Your AI Agent</CardTitle>
-              </div>
-              <CardDescription>
-                Your AI agent is ready! Download the generated textual definition with a Python LangGraph conceptual structure.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h4 className="font-semibold text-lg mb-1">Confirmed Flowchart:</h4>
-                <pre className="p-4 border rounded-md bg-secondary/30 max-h-80 overflow-auto text-sm font-code">{generatedFlowchartText || "No flowchart confirmed."}</pre>
-              </div>
-              <Button onClick={handleExportAgent} disabled={!generatedFlowchartText.trim()} className="w-full sm:w-auto text-base py-3 px-6">
                 <DownloadCloud className="mr-2 h-5 w-5" />
                 Download Agent Definition
               </Button>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => navigateToStep(2.5)} className="text-base py-3 px-6">Back</Button>
             </CardFooter>
           </Card>
         )}
