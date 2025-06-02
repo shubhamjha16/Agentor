@@ -151,7 +151,7 @@ export default function AgentorPage() {
     const mcqEntries = Object.entries(mcqAnswers);
     mcqEntries.forEach(([key, value], index) => {
       const escapedValue = String(value).replace(/'/g, "\\'").replace(/\n/g, "\\n");
-      mcqAnswersPythonDict += `'${key}': '${escapedValue}'`;
+      mcqAnswersPythonDict += `'${followUpQuestions[parseInt(key)]?.questionText.replace(/'/g, "\\'").replace(/\n/g, "\\n") || `Question ${key}`}': '${escapedValue}'`;
       if (index < mcqEntries.length - 1) {
         mcqAnswersPythonDict += ", ";
       }
@@ -189,11 +189,16 @@ ${safeGeneratedFlowchartText}
 # 3. Implement any required LangChain tools.
 # 4. Potentially adjust state and routing based on specific needs.
 
+import os # For API keys
 from typing import TypedDict, Optional, Dict, Any, List, Literal
 from langgraph.graph import StateGraph, END
+# from langgraph.checkpoint.sqlite import SqliteSaver # Example for persistence
 # from langchain_core.messages import BaseMessage, HumanMessage, AIMessage # If using conversational memory
-# from langchain_core.tools import tool # For defining LangChain tools
-# from langchain_openai import ChatOpenAI # Example LLM for tools or agent steps
+from langchain_core.tools import tool 
+from langchain_openai import ChatOpenAI # Example LLM for tools or agent steps
+
+# Example: Load API keys from environment variables
+# os.environ["OPENAI_API_KEY"] = "sk-your-openai-api-key"
 
 print("--- Conceptual LangGraph Agent Definition ---")
 
@@ -206,74 +211,99 @@ class AgentState(TypedDict):
     parsedFlowchart: Optional[Dict[str, Any]] # For storing structured flowchart
     agentScratchpad: str # For intermediate thoughts/results
     intermediateResults: Dict[str, Any] # Store outputs from tools or steps
+    # conversation_history: List[BaseMessage] # Example if conversational memory is needed
     finalResponse: Optional[str]
-    # Add other state variables as needed based on your flowchart (e.g., conversation_history: List[BaseMessage])
     # e.g., current_node_id: Optional[str] # To track progress through the flowchart
 
 # 2. Define Flowchart Parsing Logic (Conceptual)
 def parse_flowchart_to_nodes_and_edges(flowchart_text: str) -> Dict[str, Any]:
     """
-    Parses the textual flowchart into a structured representation.
+    Parses the textual flowchart (e.g., Mermaid syntax) into a structured representation.
     This is a CRITICAL and COMPLEX step. The implementation will heavily depend
-    on the format of 'flowchart_text' (e.g., Mermaid, custom DSL).
-    You might use regex, a dedicated parsing library, or even an LLM call for this.
+    on the format of 'flowchart_text'.
+    You might use regex, a dedicated parsing library (if one exists for the format), 
+    or even an LLM call (e.g., to Gemini or GPT-4o) to convert the text to a JSON structure.
 
     Output should ideally be a dictionary or list of objects representing:
-    - Nodes: their ID, type (e.g., 'start', 'decision', 'action', 'end'), content/prompt.
+    - Nodes: their ID, type (e.g., 'start', 'decision', 'action', 'llm_call', 'tool_call', 'end'), 
+             content/prompt, and any specific parameters.
     - Edges: source node ID, target node ID, condition (for decision nodes).
     """
-    print(f"Attempting to parse flowchart: {flowchart_text[:100]}...")
+    print(f"Attempting to parse flowchart: {flowchart_text[:150]}...")
     # Placeholder: In a real scenario, this would involve significant logic.
-    # Example conceptual output structure:
-    # {
+    # Example conceptual output structure if flowchart_text was Mermaid:
+    # flowchart_text = "graph TD\\nA[Start] --> B{Is it a product query?}; B -- Yes --> C[Lookup Product]; B -- No --> D[General Query]"
+    # parsed_structure = {
     #   "nodes": [
-    #     {"id": "start", "type": "start_node", "next": "user_intent_analysis"},
-    #     {"id": "user_intent_analysis", "type": "llm_call_node", "prompt_template": "Analyze user: {{{userInput}}}", "next": "decision_is_product_query"},
-    #     {"id": "decision_is_product_query", "type": "conditional_node", "condition_logic_key": "is_product_query"}, # Points to a key in intermediateResults
-    #     # ... more nodes
+    #     {"id": "A", "label": "Start", "type": "start_node", "next_node": "B"},
+    #     {"id": "B", "label": "Is it a product query?", "type": "conditional_node", "condition_key_in_state": "is_product_query"},
+    #     {"id": "C", "label": "Lookup Product", "type": "tool_call_node", "tool_name": "product_lookup_tool"},
+    #     {"id": "D", "label": "General Query", "type": "llm_call_node", "prompt_template": "Answer: {{{userInput}}}"}
     #   ],
     #   "edges": [
-    #     {"from": "decision_is_product_query", "to": "product_lookup_node", "condition_value": "yes"},
-    #     {"from": "decision_is_product_query", "to": "general_query_node", "condition_value": "no"},
-    #     # ... more edges
+    #     {"from": "A", "to": "B"},
+    #     {"from": "B", "to": "C", "condition_value": True}, # or "yes"
+    #     {"from": "B", "to": "D", "condition_value": False} # or "no"
     #   ],
-    #   "entry_point": "start"
+    #   "entry_point": "A" # The ID of the starting node
     # }
-    # For now, returning a dummy structure.
-    parsed_structure = {"nodes": [], "edges": [], "entry_point": "entry_node_placeholder"} # Replace with actual parsing
-    print("Flowchart parsing placeholder executed.")
+    # For now, returning a dummy structure. This needs to be implemented.
+    parsed_structure = {
+        "nodes": [{"id": "entry_node_placeholder", "type": "placeholder", "label":"Conceptual Entry"}], 
+        "edges": [], 
+        "entry_point": "entry_node_placeholder"
+    }
+    print("Flowchart parsing placeholder executed. Real implementation needed.")
     return parsed_structure
 
 # 3. Define LangChain Tools (Conceptual - if needed)
-# @tool
-# def knowledge_base_lookup_tool(query: str) -> str:
-#     \"\"\"Looks up information in the knowledge base based on the query.\"\"\"
-#     print(f"--- Tool: knowledge_base_lookup_tool called with query: {query} ---")
-#     # Placeholder: Implement actual KB lookup logic here
-#     if "product A" in query.lower():
-#         return "Product A is a high-performance gadget with features X, Y, Z."
-#     return "Sorry, I couldn't find specific information for that query in the KB."
+#    Tools allow the agent to interact with external systems or perform specific actions.
+#    Example: A tool to lookup product information from a knowledge base.
 
-# llm_for_tools = ChatOpenAI(model="gpt-3.5-turbo") # Example LLM
-# tools = [knowledge_base_lookup_tool]
-# llm_with_tools = llm_for_tools.bind_tools(tools)
+# @tool
+# def product_lookup_tool(product_name: str) -> str:
+#     \"\"\"Looks up information about a specific product in the knowledge base.\"\"\"
+#     print(f"--- Tool: product_lookup_tool called for product: {product_name} ---")
+#     # Placeholder: Implement actual KB lookup logic here.
+#     # This could involve querying a database, an API, or a vector store.
+#     if "widget pro" in product_name.lower():
+#         return "Widget Pro: Features include A, B, C. Price: $99.99."
+#     elif "gadget max" in product_name.lower():
+#         return "Gadget Max: Advanced features X, Y, Z. Price: $149.00. Currently out of stock."
+#     else:
+#         return f"Sorry, no information found for product: {product_name}."
+
+# Example LLM for tool execution (if tools themselves use an LLM or need an LLM for routing to tools)
+# llm_for_tools = ChatOpenAI(model="gpt-3.5-turbo", temperature=0) 
+# tools = [product_lookup_tool]
+# llm_with_tools = llm_for_tools.bind_tools(tools) # Makes tools available to the LLM
 
 
 # 4. Define Nodes (as Python functions)
 #    Each node takes the current state (AgentState) and returns a dictionary to update the state.
-#    Ideally, many of these nodes would be dynamically generated or selected based on 'parsedFlowchart'.
+#    Node functions would ideally be dynamically generated or selected based on 'parsedFlowchart'.
 
 def entry_node(state: AgentState) -> Dict[str, Any]:
     print("--- Node: Entry ---")
     print(f"Initializing agent with Use Case: {state['useCaseDescription'][:100]}...")
+    
+    # Actual parsing would happen here
     parsed_flowchart = parse_flowchart_to_nodes_and_edges(state['flowchartLogic'])
     
     # The 'parsedFlowchart' would then guide which node to go to next,
-    # or what initial actions to take.
-    updated_scratchpad = "Agent initialized. Flowchart parsed (conceptually). Ready to process."
-    # Example: if the agent is conversational
-    # if not state.get('conversation_history'):
-    # updated_scratchpad += "\\nNo conversation history yet."
+    # or what initial actions to take. For example, setting the 'current_node_id'.
+    updated_scratchpad = "Agent initialized."
+    if parsed_flowchart.get("entry_point"):
+      updated_scratchpad += f" Flowchart parsed (conceptually). Entry point: {parsed_flowchart['entry_point']}. Ready to process."
+    else:
+      updated_scratchpad += " Flowchart parsing incomplete or entry point not found."
+
+    # Example: If the agent is conversational and needs user input to start
+    # if not state.get('userInput'):
+    #     updated_scratchpad += "\\nWaiting for user input..."
+    #     # Could set a flag in intermediateResults to signify waiting
+    #     state['intermediateResults']['status'] = 'awaiting_input'
+
     return {
         "agentScratchpad": state.get("agentScratchpad","") + "\\n" + updated_scratchpad, 
         "parsedFlowchart": parsed_flowchart,
@@ -281,114 +311,148 @@ def entry_node(state: AgentState) -> Dict[str, Any]:
     }
 
 # Example of a generic processing node. In reality, you'd have specific nodes
-# for different actions in your flowchart (e.g., 'ask_clarifying_question', 'call_tool_X', 'generate_response').
-def process_flowchart_step_node(state: AgentState) -> Dict[str, Any]:
-    print("--- Node: Process Flowchart Step (Generic) ---")
-    # This is where the core logic based on the *parsed* flowchart would reside.
-    # - Identify current step in 'parsedFlowchart' (perhaps using 'current_node_id' in state).
-    # - Execute action for that step (e.g., call an LLM, use a tool, update state).
-    # - Update 'agentScratchpad' and 'intermediateResults'.
-    
-    current_input = state.get('userInput', '')
+# for different actions in your flowchart (e.g., 'ask_clarifying_question_node', 'call_specific_tool_node', 'generate_response_node').
+def process_input_and_determine_intent_node(state: AgentState) -> Dict[str, Any]:
+    print("--- Node: Process Input & Determine Intent (Conceptual) ---")
+    userInput = state.get('userInput', '')
+    useCase = state.get('useCaseDescription', '')
     scratchpad = state.get('agentScratchpad', '')
-    
-    # --- Placeholder Logic ---
-    print(f"Interpreting parsed flowchart (conceptual): {str(state.get('parsedFlowchart', {}))[:100]}...")
-    print(f"Considering user input: {current_input[:70]}...")
+    intermediate_results = state.get('intermediateResults', {})
 
-    agent_response_text = "Processing step based on flowchart logic..."
-    if "customer support" in state['useCaseDescription'].lower():
-        agent_response_text = "Based on the flowchart, I should provide customer support steps. (Conceptual: actual steps would be derived from parsed flowchart)"
-        # Example: if a tool was needed:
-        # tool_call_result = knowledge_base_lookup_tool.invoke({"query": "product A issue"})
-        # agent_response_text += f" KB Result: {tool_call_result}"
-        # state['intermediateResults']['kb_lookup'] = tool_call_result
-    elif "product recommendation" in state['useCaseDescription'].lower():
-        agent_response_text = "According to the flowchart, I will recommend a product. (Conceptual)"
+    print(f"Considering user input: '{userInput[:70]}...' based on use case: '{useCase[:70]}...'")
+
+    # --- Placeholder Logic for setting intermediateResults for routing ---
+    # This logic would be more sophisticated, likely involving an LLM call
+    # or parsing the 'userInput' against patterns from the 'parsedFlowchart'.
+    agent_response_text = "Processing step..."
+    if "product" in userInput.lower() or "widget" in userInput.lower():
+        intermediate_results['intent_type'] = 'product_inquiry'
+        agent_response_text += " Detected product-related inquiry."
+        # Example: if a tool was needed right away for product inquiry
+        # if product_lookup_tool: # check if tool is defined
+        #     try:
+        #         tool_output = product_lookup_tool.invoke({"product_name": userInput}) # Simplistic, real extraction needed
+        #         intermediate_results['product_lookup_result'] = tool_output
+        #         agent_response_text += f" Tool call (product_lookup_tool) result: {tool_output}"
+        #     except Exception as e:
+        #         agent_response_text += f" Error calling product_lookup_tool: {e}"
+        #         intermediate_results['product_lookup_error'] = str(e)
+    elif "support" in userInput.lower() or "help" in userInput.lower():
+        intermediate_results['intent_type'] = 'support_request'
+        agent_response_text += " Detected support request."
+    else:
+        intermediate_results['intent_type'] = 'general_query'
+        agent_response_text += " Detected general query."
     
-    updated_scratchpad = scratchpad + f"\\nFlowchart step processed: {agent_response_text}"
-    # This node might set a specific key in intermediateResults that a conditional edge can check.
-    # e.g., state['intermediateResults']['next_step_condition'] = 'needs_more_info'
-    return {"agentScratchpad": updated_scratchpad, "finalResponse": agent_response_text, "intermediateResults": state.get("intermediateResults", {})}
+    updated_scratchpad = scratchpad + f"\\nIntent determination: {intermediate_results.get('intent_type', 'unknown')}. Response hint: {agent_response_text}"
+    
+    return {
+        "agentScratchpad": updated_scratchpad, 
+        "intermediateResults": intermediate_results,
+        "finalResponse": agent_response_text # This might be an intermediate response
+    }
+
+def handle_product_inquiry_node(state: AgentState) -> Dict[str, Any]:
+    print("--- Node: Handle Product Inquiry ---")
+    # This node would be specifically for product inquiries.
+    # It might use results from 'product_lookup_tool' if called previously,
+    # or make a call to an LLM to formulate a response based on product data.
+    product_info = state['intermediateResults'].get('product_lookup_result', 'No specific product information found yet.')
+    final_response = f"Regarding your product inquiry: {product_info} How else can I help?"
+    print(f"Formulating response for product inquiry: {final_response}")
+    return {"finalResponse": final_response, "agentScratchpad": state.get("agentScratchpad","") + "\\nHandled product inquiry."}
+
+def handle_general_query_node(state: AgentState) -> Dict[str, Any]:
+    print("--- Node: Handle General Query ---")
+    userInput = state.get('userInput', 'your query')
+    # This node might call an LLM to answer a general question.
+    # llm = ChatOpenAI(model="gpt-3.5-turbo")
+    # response = llm.invoke(f"Answer the following user query: {userInput}")
+    # final_response = response.content
+    final_response = f"For your general query about '{userInput}', here is some information... (LLM call placeholder)"
+    print(f"Formulating response for general query: {final_response}")
+    return {"finalResponse": final_response, "agentScratchpad": state.get("agentScratchpad","") + "\\nHandled general query."}
+
 
 def final_output_node(state: AgentState) -> Dict[str, Any]:
     print("--- Node: Final Output ---")
     response = state.get('finalResponse', "No specific response was generated by the agent.")
     print(f"Agent's Final Response: {response}")
-    return {"finalResponse": response} 
+    # This node could also perform final cleanup or logging.
+    return {"finalResponse": response} # Potentially could return END here if it's truly the last step.
 
-# 5. Define Router/Conditional Logic (More Concrete Example)
-def decide_next_step_router(state: AgentState) -> Literal["path_A", "path_B", "__end__"]:
+# 5. Define Router/Conditional Logic
+def route_based_on_intent(state: AgentState) -> Literal["product_inquiry_path", "general_query_path", "__end__"]:
     """
-    Example router function for conditional edges.
-    Inspects the state to decide the next node or if the process should end.
+    Router function for conditional edges based on 'intent_type' in intermediateResults.
     """
-    print("--- Router: decide_next_step_router ---")
-    scratchpad = state.get("agentScratchpad", "").lower()
-    intermediate_results = state.get("intermediateResults", {})
+    print("--- Router: route_based_on_intent ---")
+    intent = state['intermediateResults'].get('intent_type')
+    print(f"Routing based on intent: {intent}")
 
-    # This logic is highly dependent on your specific flowchart and state updates.
-    if "some_condition_for_path_a" in scratchpad or intermediate_results.get("some_key") == "value_for_A":
-        print("Routing to Path A")
-        return "path_A" # Name of the next node for Path A
-    elif "some_condition_for_path_b" in scratchpad:
-        print("Routing to Path B")
-        return "path_B" # Name of the next node for Path B
+    if intent == 'product_inquiry':
+        return "product_inquiry_path"
+    elif intent == 'support_request': # Example: support might go to general or a dedicated path
+        return "general_query_path" # Or "support_path" if defined
+    elif intent == 'general_query':
+        return "general_query_path"
     else:
-        print("Routing to END")
-        return "__end__" # Special keyword to end the graph
-
-# Placeholder nodes for the router example
-def path_a_node(state: AgentState) -> Dict[str, Any]:
-    print("--- Node: Path A ---")
-    return {"agentScratchpad": state.get("agentScratchpad","") + "\\nExecuted Path A"}
-
-def path_b_node(state: AgentState) -> Dict[str, Any]:
-    print("--- Node: Path B ---")
-    return {"agentScratchpad": state.get("agentScratchpad","") + "\\nExecuted Path B"}
+        # If intent is unclear or processing should stop for other reasons
+        print("Intent unclear or no specific path, routing to END.")
+        return "__end__" 
 
 # 6. Assemble the Graph
 print("--- Assembling LangGraph ---")
+# memory = SqliteSaver.from_conn_string(":memory:") # Example for checkpointing
+
 builder = StateGraph(AgentState)
+# builder = StateGraph(AgentState, checkpointer=memory) # With checkpointing
 
 # Add nodes to the graph
-# These would ideally be added based on the 'parsedFlowchart'
 builder.add_node("entry", entry_node)
-builder.add_node("process_step", process_flowchart_step_node) 
-# For the conditional example:
-builder.add_node("path_A_handler", path_a_node)
-builder.add_node("path_B_handler", path_b_node)
+builder.add_node("process_input", process_input_and_determine_intent_node) 
+builder.add_node("handle_product_inquiry", handle_product_inquiry_node)
+builder.add_node("handle_general_query", handle_general_query_node)
 builder.add_node("final_output", final_output_node)
 
+
 # Set the entry point for the graph
-# This could also be dynamically set from 'parsedFlowchart.entry_point'
+# This could also be dynamically set from 'parsedFlowchart.entry_point' if parsing is implemented
 builder.set_entry_point("entry")
 
 # Add edges to define the flow between nodes
-# Static edges:
-builder.add_edge("entry", "process_step")
+builder.add_edge("entry", "process_input")
 
 # Conditional Edges:
-# The 'process_step' node would need to set some state that 'decide_next_step_router' can check.
+# After 'process_input', the 'route_based_on_intent' router decides the next step.
 builder.add_conditional_edges(
-    "process_step", # Source node
-    decide_next_step_router, # Router function
+    "process_input", # Source node
+    route_based_on_intent, # Router function
     { # Mapping of router's return value to next node name
-        "path_A": "path_A_handler",
-        "path_B": "path_B_handler",
-        "__end__": "final_output" # Using final_output before END for clarity
+        "product_inquiry_path": "handle_product_inquiry",
+        "general_query_path": "handle_general_query",
+        # "support_path": "handle_support_node", # If a dedicated support node existed
+        "__end__": "final_output" 
     }
 )
-builder.add_edge("path_A_handler", "final_output")
-builder.add_edge("path_B_handler", "final_output")
 
-# Define the end point of the graph
+# Edges from specific handlers to the final output or back to input processing for multi-turn
+builder.add_edge("handle_product_inquiry", "final_output") # Or could loop back to 'process_input'
+builder.add_edge("handle_general_query", "final_output")  # Or could loop back
+
+# Define the end point of the graph (can also be a specific node that always leads to END)
+# builder.add_edge("final_output", END) # If final_output isn't the absolute end.
+# For this example, let's make final_output the last step before explicit END.
+# If 'final_output_node' itself should signify the end, it can return END or be the target of an __end__ route.
+# For clarity, adding an explicit edge to END from final_output.
 builder.add_edge("final_output", END)
+
 
 # 7. Compile the Graph
 print("--- Compiling Graph ---")
 try:
-    agent_executor = builder.compile()
+    # agent_executor = builder.compile()
+    agent_executor = builder.compile(checkpointer=memory if 'memory' in locals() else None) # Compile with memory if defined
     print("Graph compiled successfully.")
 
     # 8. Invoke the Graph (Example)
@@ -397,32 +461,51 @@ try:
         "useCaseDescription": """${safeUseCaseDescription}""",
         "mcqAnswers": ${mcqAnswersPythonDict},
         "flowchartLogic": """${safeGeneratedFlowchartText}""",
-        "userInput": "Hello, I need help with my recent order about Product A.", # Example user input
-        "agentScratchpad": "", # Initial scratchpad
-        "intermediateResults": {}, # Initial intermediate results
+        "userInput": "I need help with Widget Pro.", # Example user input for testing
+        "agentScratchpad": "", 
+        "intermediateResults": {}, 
+        # "conversation_history": [], # Initialize if using conversational memory
         "finalResponse": None,
-        # "conversation_history": [] # Initialize if using conversational memory
     }
-
-    print("\\nStreaming agent execution (conceptual)...")
-    # for event_step in agent_executor.stream(initial_state_input):
-    #     node_name = list(event_step.keys())[0]
-    #     current_state_at_node = event_step[node_name]
-    #     print(f"\\nOutput from node '{node_name}':")
-    #     print("Current State:", current_state_at_node)
-    #     print("--------------------------------------")
     
-    final_state_output = agent_executor.invoke(initial_state_input)
+    # config for streaming/invocation, e.g., for identifying a thread for persistence
+    # invocation_config = {"configurable": {"thread_id": "user-123"}}
+
+    print("\\nInvoking agent with initial state:", initial_state_input)
+    # final_state_output = agent_executor.invoke(initial_state_input, config=invocation_config)
+    final_state_output = agent_executor.invoke(initial_state_input) # Simpler invocation
+
     print("\\nFinal Agent State after invocation:", final_state_output)
     print("Final Response:", final_state_output.get('finalResponse'))
 
+    # Example of streaming if you want to see each step:
+    # print("\\nStreaming agent execution (conceptual)...")
+    # for event_step in agent_executor.stream(initial_state_input, config=invocation_config):
+    #     node_name = list(event_step.keys())[0]
+    #     current_state_at_node = event_step[node_name]
+    #     print(f"\\nOutput from node '{node_name}':")
+    #     # print("Current State:", current_state_at_node) # Can be very verbose
+    #     print(f"  Scratchpad: {current_state_at_node.get('agentScratchpad', '').splitlines()[-1]}") # last line of scratchpad
+    #     print(f"  Intermediate Results: {current_state_at_node.get('intermediateResults')}")
+    #     print(f"  Current Final Response: {current_state_at_node.get('finalResponse')}")
+    #     print("--------------------------------------")
+    # final_state_output_streamed = agent_executor.invoke(initial_state_input, config=invocation_config) # Get the final state after stream
+    # print("\\nFinal Agent State after streamed invocation:", final_state_output_streamed)
+    # print("Final Response from stream:", final_state_output_streamed.get('finalResponse'))
+
+
 except Exception as e:
     print(f"Error during graph compilation or example invocation: {e}")
+    import traceback
+    traceback.print_exc()
+
 
 print("--- End of Conceptual LangGraph Agent Definition ---")
 
 # For more details on building with LangGraph, refer to the official LangGraph documentation.
 # https://python.langchain.com/docs/langgraph
+# LangChain Expression Language (LCEL): https://python.langchain.com/docs/expression_language/
+# LangGraph Tools: https://python.langchain.com/docs/langgraph/how-tos/tools/
 `.trim();
 
     const blob = new Blob([agentDefinitionText], { type: 'text/plain;charset=utf-8' });
