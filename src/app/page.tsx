@@ -129,13 +129,13 @@ export default function AgentorPage() {
       toast({ title: "Flowchart Generated!", description: "You can now review and edit the flowchart below." });
       navigateToStep(2.5); 
     } catch (e) {
-      console.error("Error generating flowchart:", e); // For developer debugging
+      console.error("Error generating flowchart:", e); 
       const specificErrorMessage = e instanceof Error ? e.message : "An unknown error occurred while generating the flowchart.";
-      setError(specificErrorMessage); // Update Alert component with specific error
+      setError(specificErrorMessage); 
       toast({ 
         variant: "destructive", 
         title: "Flowchart Generation Failed", 
-        description: specificErrorMessage // Show specific error in toast
+        description: specificErrorMessage 
       });
     } finally {
       setIsLoadingFlowchart(false);
@@ -144,44 +144,143 @@ export default function AgentorPage() {
   
   const handleExportAgent = () => {
     if (!generatedFlowchartText) return;
-    const agentCode = `// Agentor AI Agent Code
-// Generated on: ${new Date().toISOString()}
-// Use Case: ${useCaseDescription}
-// MCQ Answers: ${JSON.stringify(mcqAnswers, null, 2)}
 
-// Flowchart Definition:
+    const mcqAnswersString = Object.keys(mcqAnswers).length > 0 
+      ? JSON.stringify(mcqAnswers, null, 2)
+      : "No follow-up questions answered.";
+
+    const agentDefinitionText = `
+// Agentor AI Agent Definition
+// Generated on: ${new Date().toISOString()}
+
+// == Use Case Description ==
+/*
+${useCaseDescription}
+*/
+
+// == MCQ Answers (Refinements) ==
+/*
+${mcqAnswersString}
+*/
+
+// == Flowchart Definition (e.g., Mermaid Syntax or other textual format) ==
 /*
 ${generatedFlowchartText}
 */
 
-// --- Start of generated agent logic (Placeholder) ---
+// --- LangGraph-inspired Textual Representation ---
 
-function main() {
-  console.log("AI Agent Initialized");
-  // Your agent's logic based on the flowchart would go here.
-  // For example, if your flowchart has a 'Start' node:
-  // executeNode('Start'); 
-}
+// This section provides a conceptual outline of how the agent's logic,
+// as described by the flowchart above, might be structured using LangGraph principles.
+// This is for illustrative purposes and is not executable LangGraph code.
 
-function executeNode(nodeName) {
-  console.log("Executing node:", nodeName);
-  // Add logic for each node type from your flowchart
-}
+// ## Core Concepts:
 
-main();
+// 1. State:
+//    A dictionary or class instance that is passed between nodes. It would hold
+//    all relevant information, e.g., user inputs, conversation history, results of tool calls.
+//    Example state keys: 'userInput', 'agentScratchpad', 'intermediateResults', 'flowchartLogic'.
 
-// --- End of generated agent logic ---
+// 2. Nodes:
+//    Functions or callables that perform a unit of work and update the state.
+//    Derived from your flowchart, nodes could represent:
+//    - Receiving user input / Initializing with use case
+//    - Applying MCQ refinements
+//    - Making a decision (conditional logic based on flowchart)
+//    - Calling a tool (e.g., an external API, a data lookup)
+//    - Generating a response or taking an action
+//    - Starting or ending the process
+
+//    Example Node Definitions (Conceptual Python-like pseudocode):
+//    def entry_node(state):
+//        # Initialize agent state
+//        print("Agent starting...")
+//        state['useCase'] = """${useCaseDescription.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$')}"""
+//        state['mcqAnswers'] = ${JSON.stringify(mcqAnswers, null, 0).replace(/`/g, '\\`')}
+//        state['flowchartLogic'] = """${generatedFlowchartText.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$')}"""
+//        state['agentScratchpad'] = "Agent initialized with use case, MCQs, and flowchart."
+//        return state
+//
+//    def process_flowchart_node(state):
+//        # Core logic based on flowchart structure, use case, and MCQ answers.
+//        # This node would interpret the 'flowchartLogic' in the state,
+//        # potentially making decisions, calling tools, or preparing a response.
+//        print(f"Processing based on flowchart: {state['flowchartLogic'][:100]}...")
+//        # Example: if "ask user X" in state['flowchartLogic'] and condition_met:
+//        # state['nextAction'] = "ask_user_x"
+//        # else:
+//        # state['nextAction'] = "provide_solution_y"
+//        state['agentResponse'] = "Output based on flowchart interpretation."
+//        return state
+//
+//    def final_output_node(state):
+//        # Presents the final result or takes a final action
+//        print(f"Agent final output: {state.get('agentResponse', 'No specific response generated.')}")
+//        return state
+
+// 3. Edges:
+//    Define the flow of control between nodes.
+//    - Standard Edges: Unconditionally go from one node to the next.
+//    - Conditional Edges: Route to different nodes based on the current state
+//      (e.g., derived from interpreting 'flowchartLogic').
+
+//    Example Edge Definitions (Conceptual LangGraph Python-like):
+//    # from langgraph.graph import StateGraph, END
+//    #
+//    # class AgentState(TypedDict):
+//    #     useCase: str
+//    #     mcqAnswers: dict
+//    #     flowchartLogic: str
+//    #     agentScratchpad: str
+//    #     agentResponse: Optional[str]
+//    #     nextAction: Optional[str]
+//    #
+//    # builder = StateGraph(AgentState)
+//    #
+//    # builder.add_node("entry", entry_node)
+//    # builder.add_node("processFlowchart", process_flowchart_node)
+//    # builder.add_node("finalOutput", final_output_node)
+//    #
+//    # builder.set_entry_point("entry")
+//    # builder.add_edge("entry", "processFlowchart")
+//    #
+//    # # Example of conditional routing (would depend on actual flowchart interpretation)
+//    # def route_after_processing(state: AgentState):
+//    #     if state.get("nextAction") == "ask_user_x":
+//    #         return "ask_user_x_node" # (Assuming 'ask_user_x_node' is defined)
+//    #     else:
+//    #         return "finalOutput"
+//    #
+//    # builder.add_conditional_edges(
+//    #     "processFlowchart",
+//    #     route_after_processing,
+//    #     {"ask_user_x_node": "ask_user_x_node", "finalOutput": "finalOutput"}
+//    # )
+//    # builder.add_edge("ask_user_x_node", "processFlowchart") # Loop back or to next step
+//
+//    # Simplified direct edge for this example structure:
+//    builder.add_edge("processFlowchart", "finalOutput")
+//    builder.add_edge("finalOutput", END) # END is a special node in LangGraph
+
+// ## To implement this in LangGraph (Python):
+// - Install LangGraph: \`pip install langgraph\`
+// - Define your state (e.g., using TypedDict from \`typing_extensions\` or Pydantic).
+// - Write Python functions for each node that takes the state and returns a (partial) state update.
+// - Assemble the graph using \`StateGraph\` or \`Graph\`.
+// - Compile the graph using \`graph.compile()\` and then invoke it.
+
+// For more details, refer to the official LangGraph documentation.
 `;
-    const blob = new Blob([agentCode], { type: 'text/javascript' });
+    const blob = new Blob([agentDefinitionText.trim()], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'agentor_ai_agent.js';
+    a.download = 'agentor_ai_agent_definition.txt';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: "Agent Code Downloaded!", description: "Your AI agent code has been successfully downloaded." });
+    toast({ title: "Agent Definition Downloaded!", description: "Your AI agent's textual definition has been successfully downloaded." });
   };
 
   const navigateToStep = (step: number) => {
@@ -393,7 +492,7 @@ main();
                 <CardTitle className="font-headline text-2xl">Export Your AI Agent</CardTitle>
               </div>
               <CardDescription>
-                Your AI agent is ready! Download the generated code.
+                Your AI agent is ready! Download the generated textual definition.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -403,7 +502,7 @@ main();
               </div>
               <Button onClick={handleExportAgent} disabled={!generatedFlowchartText.trim()} className="w-full sm:w-auto text-base py-3 px-6">
                 <DownloadCloud className="mr-2 h-5 w-5" />
-                Download Agent Code
+                Download Agent Definition
               </Button>
             </CardContent>
             <CardFooter className="flex justify-between">
