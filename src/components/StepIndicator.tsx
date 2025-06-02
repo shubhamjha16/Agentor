@@ -16,7 +16,7 @@ export function StepIndicator({ currentStep, totalSteps, stepTitles }: StepIndic
         const isActive = stepNumber === currentStep;
         const isCompleted = stepNumber < currentStep;
         return (
-          <div key={stepNumber} className="flex flex-col items-center text-center w-1/2 max-w-[180px] sm:max-w-[220px]">
+          <div key={stepNumber} className="flex flex-col items-center text-center w-1/2 max-w-[220px] sm:max-w-[280px]">
             <div
               className={cn(
                 "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 text-lg sm:text-xl font-semibold transition-all duration-300 ease-in-out",

@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Brain, ScanText, DownloadCloud, AlertTriangle, Check, FileImage, Trash2 } from "lucide-react";
+import { Loader2, Brain, ScanText, DownloadCloud, AlertTriangle, Check, FileImage, Trash2, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface MCQ {
@@ -40,7 +40,7 @@ export default function AgentorPage() {
 
   const { toast } = useToast();
 
-  const stepTitles = ["Define Agent", "Review Flowchart & Export"];
+  const stepTitles = ["Define Agent & Generate Flowchart", "Review & Export Agent"];
 
   useEffect(() => {
     if (flowchartImageFile) {
@@ -103,7 +103,8 @@ export default function AgentorPage() {
     }
     setError(null);
     setIsLoadingFlowchart(true);
-    setGeneratedFlowchartText(""); // Clear previous flowchart
+    // Do not clear generatedFlowchartText here, to allow re-generation if needed without losing previous version until success
+    // setGeneratedFlowchartText(""); 
 
     let fullDescription = useCaseDescription;
     if (followUpQuestions.length > 0 && Object.keys(mcqAnswers).length > 0) {
@@ -127,8 +128,8 @@ export default function AgentorPage() {
       }
       const result = await generateFlowchart(input);
       setGeneratedFlowchartText(result.flowchartDiagram);
-      toast({ title: "Flowchart Generated!", description: "You can now review and edit the flowchart." });
-      navigateToStep(2); 
+      toast({ title: "Flowchart Generated!", description: "Review and edit the flowchart below. Then proceed to the next step." });
+      // navigateToStep(2); // Removed: User stays on Step 1 to review/edit
     } catch (e) {
       console.error("Error generating flowchart:", e); 
       const specificErrorMessage = e instanceof Error ? e.message : "An unknown error occurred while generating the flowchart.";
@@ -486,10 +487,10 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
             <CardHeader>
               <div className="flex items-center mb-2">
                 <Brain className="h-7 w-7 mr-3 text-primary" />
-                <CardTitle className="font-headline text-2xl">Define Your AI Agent</CardTitle>
+                <CardTitle className="font-headline text-2xl">Define Your AI Agent & Generate Flowchart</CardTitle>
               </div>
               <CardDescription>
-                Describe your agent, answer clarifying questions, and optionally provide a hand-drawn flowchart to guide the AI.
+                Describe your agent, answer clarifying questions, optionally provide a hand-drawn flowchart, and generate the textual flowchart.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -556,16 +557,44 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
                   </div>
                 )}
               </div>
+
+              {generatedFlowchartText && !isLoadingFlowchart && (
+                <div className="mt-6 space-y-3 border-t pt-6">
+                  <Label htmlFor="generatedFlowchartStep1" className="text-base font-medium">Generated Flowchart (Editable)</Label>
+                  <Textarea
+                    id="generatedFlowchartStep1"
+                    value={generatedFlowchartText}
+                    onChange={(e) => setGeneratedFlowchartText(e.target.value)}
+                    rows={10}
+                    className="mt-1 font-code text-sm bg-input/30"
+                    placeholder="Flowchart will appear here in a textual format..."
+                  />
+                  <Alert className="mt-2">
+                    <Check className="h-4 w-4"/>
+                    <AlertTitle>Review and Edit</AlertTitle>
+                    <AlertDescription>
+                      You can edit the flowchart here. When ready, proceed to the next step for final review and export.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
             </CardContent>
             <CardFooter>
-              <Button 
-                onClick={handleGenerateFlowchart} 
-                disabled={isLoadingFlowchart || !useCaseDescription.trim()} 
-                className="ml-auto text-base py-3 px-6"
-              >
-                {isLoadingFlowchart ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ScanText className="mr-2 h-5 w-5" />}
-                Generate Flowchart & Proceed
-              </Button>
+              {generatedFlowchartText && !isLoadingFlowchart ? (
+                <Button onClick={() => navigateToStep(2)} className="ml-auto text-base py-3 px-6">
+                  <ArrowRight className="mr-2 h-5 w-5" />
+                  Next: Review & Export
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleGenerateFlowchart} 
+                  disabled={isLoadingFlowchart || !useCaseDescription.trim()} 
+                  className="ml-auto text-base py-3 px-6"
+                >
+                  {isLoadingFlowchart ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ScanText className="mr-2 h-5 w-5" />}
+                  Generate Flowchart
+                </Button>
+              )}
             </CardFooter>
           </Card>
         )}
@@ -575,10 +604,10 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
             <CardHeader>
               <div className="flex items-center mb-2">
                  <DownloadCloud className="h-7 w-7 mr-3 text-primary" />
-                <CardTitle className="font-headline text-2xl">Review Flowchart & Export Agent</CardTitle>
+                <CardTitle className="font-headline text-2xl">Review & Export Agent</CardTitle>
               </div>
               <CardDescription>
-                Review and edit the generated flowchart text. Then, download your AI agent's definition.
+                Review all inputs and the generated flowchart text. Then, download your AI agent's definition.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -626,7 +655,7 @@ print("--- End of Conceptual LangGraph Agent Definition ---")
                   <Check className="h-4 w-4"/>
                   <AlertTitle>Review and Edit</AlertTitle>
                   <AlertDescription>
-                    You can edit the textual representation of the flowchart above. 
+                    You can make final edits to the textual representation of the flowchart above. 
                     This text will be used to generate your agent definition.
                   </AlertDescription>
                 </Alert>
