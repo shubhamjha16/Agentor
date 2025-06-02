@@ -81,8 +81,8 @@ export default function AgentorPage() {
     } catch (e) {
       console.error("Error generating follow-up questions:", e);
       const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-      setError(`Failed to generate follow-up questions: ${errorMessage}`);
-      toast({ variant: "destructive", title: "Error", description: "Could not generate follow-up questions." });
+      setError(errorMessage);
+      toast({ variant: "destructive", title: "Question Generation Failed", description: errorMessage });
     } finally {
       setIsLoadingQuestions(false);
     }
@@ -129,10 +129,14 @@ export default function AgentorPage() {
       toast({ title: "Flowchart Generated!", description: "You can now review and edit the flowchart below." });
       navigateToStep(2.5); 
     } catch (e) {
-      console.error("Error generating flowchart:", e);
-      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-      setError(`Failed to generate flowchart: ${errorMessage}`);
-      toast({ variant: "destructive", title: "Error", description: "Could not generate flowchart." });
+      console.error("Error generating flowchart:", e); // For developer debugging
+      const specificErrorMessage = e instanceof Error ? e.message : "An unknown error occurred while generating the flowchart.";
+      setError(specificErrorMessage); // Update Alert component with specific error
+      toast({ 
+        variant: "destructive", 
+        title: "Flowchart Generation Failed", 
+        description: specificErrorMessage // Show specific error in toast
+      });
     } finally {
       setIsLoadingFlowchart(false);
     }
