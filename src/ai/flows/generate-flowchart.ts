@@ -1,3 +1,4 @@
+
 // src/ai/flows/generate-flowchart.ts
 'use server';
 
@@ -61,8 +62,31 @@ const generateFlowchartFlow = ai.defineFlow(
     inputSchema: GenerateFlowchartInputSchema,
     outputSchema: GenerateFlowchartOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input): Promise<GenerateFlowchartOutput> => {
+    try {
+      const { output } = await prompt(input);
+
+      if (!output) {
+        console.error('Flowchart generation: Model returned undefined output.');
+        throw new Error('The AI model did not return the expected output for the flowchart. Please check your input or try again.');
+      }
+      return output;
+    } catch (e: unknown) {
+      let userFriendlyErrorMessage = 'An unexpected error occurred while generating the flowchart. Please try again.';
+      if (e instanceof Error) {
+        console.error(`Error in generateFlowchartFlow: ${e.message}`, e);
+        if (e.message.includes('503 Service Unavailable') || e.message.includes('model is overloaded') || e.message.includes('overloaded')) {
+          userFriendlyErrorMessage = 'The AI model is currently overloaded. Please try again in a few moments.';
+        } else if (e.message.includes('API key not valid')) {
+          userFriendlyErrorMessage = 'The AI API key is not valid. Please check your configuration.';
+        } else {
+          // Keep a somewhat generic message for other errors but include original if it's not too technical
+          userFriendlyErrorMessage = `Flowchart generation failed. If this persists, please check the console for more details.`;
+        }
+      } else {
+        console.error('Unknown error in generateFlowchartFlow:', e);
+      }
+      throw new Error(userFriendlyErrorMessage);
+    }
   }
 );
